@@ -1,0 +1,25 @@
+{
+  "name": "generator-assets-automation",
+  "version": "0.0.1",
+  "description": "Automated testing for Photoshop Generator 'Asset Generation' plugin",
+  "main": "main.js",
+  "generator-core-version": "~2 >2.0.2",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adobe-photoshop/generator-assets-automation"
+  },
+  "license": "MIT",
+  "readmeFilename": "README.md",
+  "scripts": {
+    "test": "true"
+  },
+  "dependencies": {
+    "fs-extra": "~0.8",
+    "q": "~1.0",
+    "tmp": "~0.0.23"
+  },
+  "devDependencies": {
+    "grunt": "~0.4",
+    "grunt-contrib-jshint": "~0.8"
+  }
+}
