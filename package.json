@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "Automated testing for Photoshop Generator 'Asset Generation' plugin",
   "main": "main.js",
-  "generator-core-version": "~2 >2.0.2",
+  "generator-core-version": "~3",
   "repository": {
     "type": "git",
     "url": "https://github.com/adobe-photoshop/generator-assets-automation"
