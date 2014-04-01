@@ -30,7 +30,8 @@
         MENU_ID = "generator-assets-automation",
         ASSETS_PLUGIN_ID = "generator-assets",
         ASSETS_PLUGIN_CHECK_INTERVAL = 1000, // one second
-        GENERATION_ACTIVATION_TIMEOUT = 2000; // two seconds
+        GENERATION_ACTIVATION_TIMEOUT = 2000, // two seconds
+        FILES_TO_IGNORE = new RegExp("(.DS_Store)$|(desktop.ini)$", "i");
 
     var path = require("path"),
         childProcess = require("child_process"),
@@ -45,10 +46,73 @@
         _config,
         _logger,
         _assetsPluginDeferred = Q.defer(),
-        _psExecutablePathPromise = null;
+        _psExecutablePathPromise = null,
+        _idleDeferred = null,
+        _activeDeferred = Q.defer(),
+        _idle = true;
 
     function getAssetsPlugin() {
         return _assetsPluginDeferred.promise;
+    }
+
+    function _initPlugin(plugin) {
+        if (plugin.hasOwnProperty("_renderManager")) {
+            plugin._renderManager.on("active", function () {
+                if (_idle) {
+                    _idle = false;
+                    _activeDeferred.resolve();
+                    _activeDeferred = null;
+                    _idleDeferred = Q.defer();
+                }
+            });
+
+            plugin._renderManager.on("idle", function () {
+                // FIXME: unless we have the document ID, it's not easy to know
+                // when the asset generation has completely quiesced; in particular,
+                // this event fires before the file queue is necessarily empty
+                setTimeout(function () {
+                    if (!_idle) {
+                        _idle = true;
+                        _idleDeferred.resolve();
+                        _idleDeferred = null;
+                        _activeDeferred = Q.defer();
+                    }
+                }, 3000);
+            });
+        }
+    }
+
+    function _whenActive(plugin) {
+        if (plugin.hasOwnProperty("_status")) {
+            return plugin._status.whenActive();
+        }
+
+        if (!_idle) {
+            return new Q();
+        } else {
+            return _activeDeferred.promise;
+        }
+    }
+
+    function _whenIdle(plugin) {
+        if (plugin.hasOwnProperty("_status")) {
+            return plugin._status.whenIdle();
+        }
+
+        if (_idle) {
+            return new Q();
+        } else {
+            return _idleDeferred.promise;
+        }
+    }
+
+    function _activate(plugin, documentId) {
+        if (plugin.hasOwnProperty("_toggleActiveDocument")) {
+            plugin._toggleActiveDocument();
+            return;
+        }
+
+        plugin._stateManager.activate(documentId);
     }
 
     function getTestSpecForDir(baseDir) {
@@ -195,11 +259,11 @@
             plugin = thePlugin;
         })
         .then(function () {
-            return plugin._status.whenIdle();
+            return _whenIdle(plugin);
         })
         .then(function () {
             var generatingDeferred = Q.defer(),
-                whenActivePromise = plugin._status.whenActive(),
+                whenActivePromise = _whenActive(plugin),
                 activationTimeout = null;
    
             generatingDeferred.promise.finally(function () {
@@ -209,6 +273,7 @@
             });
 
             whenActivePromise.then(function () {
+                _activeDeferred = Q.defer();
                 generatingDeferred.resolve();
             });
 
@@ -217,7 +282,7 @@
                 test.documentID = id;
 
                 activationTimeout = setTimeout(function () {
-                    plugin._toggleActiveDocument();
+                    _activate(plugin);
                 }, GENERATION_ACTIVATION_TIMEOUT);
             }, function (err) {
                 generatingDeferred.reject("error opening temp Photoshop document: " + err);
@@ -226,7 +291,7 @@
             return generatingDeferred.promise;
         })
         .then(function () {
-            return plugin._status.whenIdle();
+            return _whenIdle(plugin, test.documentID);
         }).then(function () {
             return test;
         }));
@@ -331,24 +396,28 @@
         return (Q.all([
             getAllFiles(path.resolve(test.baseDir, test.output), ""),
             getAllFiles(path.resolve(test.workingDir, test.output), "")
-        ]).spread(function (base, working) {
+        ]).spread(function (_base, _working) {
             var toCompare = [],
                 comparePromises;
 
-            result.specFiles = base.concat();
-            result.actualFiles = working.concat();
+            result.specFiles = _base.filter(function (file) {
+                return !FILES_TO_IGNORE.test(file);
+            });
+            result.actualFiles = _working.filter(function (file) {
+                return !FILES_TO_IGNORE.test(file);
+            });
 
-            base.forEach(function (b) {
-                var i = working.indexOf(b);
+            result.specFiles.forEach(function (b) {
+                var i = result.actualFiles.indexOf(b);
                 if (i < 0) {
                     result.errors.push("file " + b + " missing from output");
                 } else {
                     toCompare.push(b);
-                    working.splice(i, 1);
+                    result.actualFiles.splice(i, 1);
                 }
             });
 
-            working.forEach(function (w) {
+            result.actualFiles.forEach(function (w) {
                 result.errors.push("file " + w + " is unexpectedly in output");
             });
 
@@ -456,6 +525,7 @@
         var getAssetsPluginInterval = setInterval(function () {
             var plugin = _generator.getPlugin(ASSETS_PLUGIN_ID);
             if (plugin) {
+                _initPlugin(plugin);
                 _assetsPluginDeferred.resolve(plugin);
                 clearInterval(getAssetsPluginInterval);
             }
