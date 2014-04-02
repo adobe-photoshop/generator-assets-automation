@@ -275,7 +275,6 @@
             });
 
             whenActivePromise.then(function () {
-                _activeDeferred = Q.defer();
                 generatingDeferred.resolve();
             });
 
