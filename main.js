@@ -31,7 +31,8 @@
         ASSETS_PLUGIN_ID = "generator-assets",
         ASSETS_PLUGIN_CHECK_INTERVAL = 1000, // one second
         GENERATION_ACTIVATION_TIMEOUT = 2000, // two seconds
-        FILES_TO_IGNORE = new RegExp("(.DS_Store)$|(desktop.ini)$", "i");
+        FILES_TO_IGNORE = new RegExp("(.DS_Store)$|(desktop.ini)$", "i"),
+        MAX_CONCURRENT_COMPARE_JOBS = 10;
 
     var path = require("path"),
         childProcess = require("child_process"),
@@ -162,6 +163,7 @@
 
             if (testFiles.length > 0) {
                 test = {
+                    name : path.basename(baseDir),
                     baseDir : baseDir,
                     input : testFiles[0].input,
                     output : testFiles[0].output
@@ -334,7 +336,43 @@
         }));
     }
 
+    function runInBatches(functions) {
+        var queue = functions.concat(),
+            results = [],
+            running = 0,
+            deferred = Q.defer();
+
+        function runFunction(f) {
+            running++;
+            f().then(
+                function (result) {
+                    running--;
+                    results.push(result);
+                    if (deferred.promise.isPending()) {
+                        if (queue.length > 0) {
+                            runFunction(queue.pop());
+                        } else if (running === 0) { // queue empty, none running
+                            deferred.resolve(results);
+                        }
+                    }
+                },
+                function (err) {
+                    deferred.reject(err);
+                }
+            );
+        }
+
+        if (queue.length === 0) {
+            deferred.resolve([]);
+        } else {
+            queue.splice(0, MAX_CONCURRENT_COMPARE_JOBS).map(runFunction);
+        }
+
+        return deferred.promise;
+    }
+
     function comparePixels(source, dest) {
+        _logger.debug("COMPARING %s to %s", source, dest);
 
         return (_psExecutablePathPromise
         .then(function (psPath) {
@@ -398,7 +436,8 @@
             getAllFiles(path.resolve(test.workingDir, test.output), "")
         ]).spread(function (_base, _working) {
             var toCompare = [],
-                comparePromises;
+                compareFunctions,
+                actualFilesCopy;
 
             result.specFiles = _base.filter(function (file) {
                 return !FILES_TO_IGNORE.test(file);
@@ -407,34 +446,37 @@
                 return !FILES_TO_IGNORE.test(file);
             });
 
+            actualFilesCopy = result.actualFiles.concat();
+
             result.specFiles.forEach(function (b) {
-                var i = result.actualFiles.indexOf(b);
+                var i = actualFilesCopy.indexOf(b);
                 if (i < 0) {
                     result.errors.push("file " + b + " missing from output");
                 } else {
                     toCompare.push(b);
-                    result.actualFiles.splice(i, 1);
+                    actualFilesCopy.splice(i, 1);
                 }
             });
 
-            result.actualFiles.forEach(function (w) {
+            actualFilesCopy.forEach(function (w) {
                 result.errors.push("file " + w + " is unexpectedly in output");
             });
 
-            comparePromises = toCompare.map(function (f) {
-                return (comparePixels(
-                    path.resolve(test.baseDir, test.output, f),
-                    path.resolve(test.workingDir, test.output, f)
-                )
-                .then(function (metric) {
-                    result.comparisons.push({file : f, metric : metric});
-                    if (metric > 0) {
-                        result.errors.push("file " + f + " has a comparison metric of " + metric);
-                    }
-                }));
+            compareFunctions = toCompare.map(function (f) {
+                return function () {
+                    return (comparePixels(
+                        path.resolve(test.baseDir, test.output, f),
+                        path.resolve(test.workingDir, test.output, f))
+                    .then(function (metric) {
+                        result.comparisons.push({file : f, metric : metric});
+                        if (metric > 0) {
+                            result.errors.push("file " + f + " has a comparison metric of " + metric);
+                        }
+                    }));
+                };
             });
 
-            return Q.all(comparePromises);
+            return runInBatches(compareFunctions);
         })
         .then(function () {
             if (result.errors.length === 0) {
@@ -476,6 +518,30 @@
     function runAllTests() {
         _logger.info("Running all tests...");
 
+        function summarizeResults(results) {
+            var summary = "",
+                passedCount = 0;
+
+            results.forEach(function (result) {
+                if (typeof(result) !== "object" || !result.hasOwnProperty("passed")) {
+                    summary += "execution error: " + String(result) + "\n";
+                }
+                else if (result.passed) {
+                    summary += "passed: " + result.name + "\n";
+                    passedCount++;
+                } else {
+                    summary += "failed: " + result.name + " - " + result.errors.length + " error(s)\n";
+                    result.errors.forEach(function (error) {
+                        summary += "   " + error + "\n";
+                    });
+                }
+            });
+
+            summary = "" + passedCount + "/" + results.length + " tests passed\n\n" + summary;
+
+            return summary;
+        }
+
         var results = [];
 
         return (getTests()
@@ -484,7 +550,9 @@
                 return function () {
                     return (runTest(test)
                     .then(function (test) {
-                        results.push(test.result);
+                        var result = test.result;
+                        result.name = test.name;
+                        results.push(result);
                     }));
                 };
             });
@@ -499,6 +567,9 @@
         .done(function () {
             _logger.info("...all tests done");
             _logger.info("ALL THE RESULTS:\n%s\n\n", JSON.stringify(results, null, "  "));
+            var summary = summarizeResults(results);
+            _logger.info("\n\nSUMMARY:\n\n%s\n\n", summary);
+            _generator.alert("Generator automated test summary:\n\n" + summary);
         }));
     }
 
