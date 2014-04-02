@@ -280,6 +280,7 @@
 
             openPhotoshopDocument(path.resolve(test.workingDir, test.input))
             .then(function (id) {
+                test.startTime = new Date();
                 test.documentID = id;
 
                 activationTimeout = setTimeout(function () {
@@ -294,6 +295,7 @@
         .then(function () {
             return _whenIdle(plugin, test.documentID);
         }).then(function () {
+            test.stopTime = new Date();
             return test;
         }));
     }
@@ -481,6 +483,7 @@
             if (result.errors.length === 0) {
                 result.passed = true;
             }
+            result.time = (test.stopTime - test.startTime) / 1000;
             test.result = result;
             return test;
         }));
@@ -517,6 +520,9 @@
     function runAllTests() {
         _logger.info("Running all tests...");
 
+        var allStartTime = new Date(),
+            allStopTime = null;
+
         function summarizeResults(results) {
             var summary = "",
                 passedCount = 0;
@@ -526,7 +532,7 @@
                     summary += "execution error: " + String(result) + "\n";
                 }
                 else if (result.passed) {
-                    summary += "passed: " + result.name + "\n";
+                    summary += "passed: " + result.name + " - " + result.time + " seconds\n";
                     passedCount++;
                 } else {
                     summary += "failed: " + result.name + " - " + result.errors.length + " error(s)\n";
@@ -537,6 +543,11 @@
             });
 
             summary = "" + passedCount + "/" + results.length + " tests passed\n\n" + summary;
+
+            if (allStartTime && allStopTime) {
+                summary += "\nTotal test time (including automation overhead): " +
+                    ((allStopTime - allStartTime) / 1000) + " seconds";
+            }
 
             return summary;
         }
@@ -565,6 +576,7 @@
         })
         .done(function () {
             _logger.info("...all tests done");
+            allStopTime = new Date();
             _logger.info("ALL THE RESULTS:\n%s\n\n", JSON.stringify(results, null, "  "));
             var summary = summarizeResults(results);
             _logger.info("\n\nSUMMARY:\n\n%s\n\n", summary);
