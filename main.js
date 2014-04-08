@@ -30,7 +30,6 @@
         MENU_ID = "generator-assets-automation",
         ASSETS_PLUGIN_ID = "generator-assets",
         ASSETS_PLUGIN_CHECK_INTERVAL = 1000, // one second
-        GENERATION_ACTIVATION_TIMEOUT = 2000, // two seconds
         FILES_TO_IGNORE = new RegExp("(.DS_Store)$|(desktop.ini)$", "i"),
         MAX_CONCURRENT_COMPARE_JOBS = 10;
 
@@ -49,38 +48,10 @@
         _assetsPluginDeferred = Q.defer(),
         _psExecutablePathPromise = null,
         _idleDeferred = null,
-        _activeDeferred = Q.defer(),
-        _idle = true;
+        _activeDeferred = Q.defer();
 
     function getAssetsPlugin() {
         return _assetsPluginDeferred.promise;
-    }
-
-    function _initPlugin(plugin) {
-        if (plugin.hasOwnProperty("_renderManager")) {
-            plugin._renderManager.on("active", function () {
-                if (_idle) {
-                    _idle = false;
-                    _activeDeferred.resolve();
-                    _activeDeferred = null;
-                    _idleDeferred = Q.defer();
-                }
-            });
-
-            plugin._renderManager.on("idle", function () {
-                // FIXME: unless we have the document ID, it's not easy to know
-                // when the asset generation has completely quiesced; in particular,
-                // this event fires before the file queue is necessarily empty
-                setTimeout(function () {
-                    if (!_idle) {
-                        _idle = true;
-                        _idleDeferred.resolve();
-                        _idleDeferred = null;
-                        _activeDeferred = Q.defer();
-                    }
-                }, 3000);
-            });
-        }
     }
 
     function _whenActive(plugin) {
@@ -88,23 +59,27 @@
             return plugin._status.whenActive();
         }
 
-        if (!_idle) {
-            return new Q();
-        } else {
-            return _activeDeferred.promise;
-        }
+        plugin._renderManager.once("active", function () {
+            _activeDeferred.resolve();
+            _activeDeferred = null;
+            _idleDeferred = Q.defer();
+        });
+
+        return _activeDeferred.promise;
     }
 
-    function _whenIdle(plugin) {
+    function _whenIdle(plugin, id) {
         if (plugin.hasOwnProperty("_status")) {
             return plugin._status.whenIdle();
         }
 
-        if (_idle) {
-            return new Q();
-        } else {
-            return _idleDeferred.promise;
-        }
+        plugin._assetManagers[id].once("idle", function () {
+            _idleDeferred.resolve();
+            _idleDeferred = null;
+            _activeDeferred = Q.defer();
+        });
+
+        return _idleDeferred.promise;
     }
 
     function _activate(plugin, documentId) {
@@ -261,40 +236,22 @@
             plugin = thePlugin;
         })
         .then(function () {
-            return _whenIdle(plugin);
+            return openPhotoshopDocument(path.resolve(test.workingDir, test.input));
+        })
+        .then(function (id) {
+            var activePromise = _whenActive(plugin, id);
+
+            test.documentID = id;
+            _activate(plugin, id);
+
+            return activePromise;
         })
         .then(function () {
-            var generatingDeferred = Q.defer(),
-                whenActivePromise = _whenActive(plugin),
-                activationTimeout = null;
-   
-            generatingDeferred.promise.finally(function () {
-                if (activationTimeout !== null) {
-                    clearTimeout(activationTimeout);
-                }
-            });
+            test.startTime = new Date();
 
-            whenActivePromise.then(function () {
-                generatingDeferred.resolve();
-            });
-
-            openPhotoshopDocument(path.resolve(test.workingDir, test.input))
-            .then(function (id) {
-                test.startTime = new Date();
-                test.documentID = id;
-
-                activationTimeout = setTimeout(function () {
-                    _activate(plugin);
-                }, GENERATION_ACTIVATION_TIMEOUT);
-            }, function (err) {
-                generatingDeferred.reject("error opening temp Photoshop document: " + err);
-            });
-
-            return generatingDeferred.promise;
-        })
-        .then(function () {
             return _whenIdle(plugin, test.documentID);
-        }).then(function () {
+        })
+        .then(function () {
             test.stopTime = new Date();
             return test;
         }));
@@ -607,7 +564,6 @@
         var getAssetsPluginInterval = setInterval(function () {
             var plugin = _generator.getPlugin(ASSETS_PLUGIN_ID);
             if (plugin) {
-                _initPlugin(plugin);
                 _assetsPluginDeferred.resolve(plugin);
                 clearInterval(getAssetsPluginInterval);
             }
