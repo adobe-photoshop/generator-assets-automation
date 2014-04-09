@@ -5,4 +5,4 @@
 
 var fileRef = new File(params.filename);
 var doc = app.open(fileRef);
-doc.id;
+String(doc.id);
