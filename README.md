@@ -1,4 +1,4 @@
-## Image Asset Automation Plug-in for Generator
+## Image Asset Automation Plug-in for Generator [![Build Status](https://travis-ci.org/adobe-photoshop/generator-assets-automation.png?branch=master)](https://travis-ci.org/adobe-photoshop/generator-assets-automation)
 
 This repository contains a plug-in for Adobe Photoshop CC's Generator extensibility layer. This plug-in performs automated tests of the [Generator Image Asset plug-in](https://github.com/adobe-photoshop/generator-assets). 
 
