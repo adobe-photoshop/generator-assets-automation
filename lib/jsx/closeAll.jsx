@@ -4,7 +4,7 @@
 
 while (true) {
     try {
-        app.activeDocument.close(SaveOptions.DONOTSAVECHANGES)
+        app.activeDocument.close(SaveOptions.DONOTSAVECHANGES);
     } catch (e) {
         break;
     }
