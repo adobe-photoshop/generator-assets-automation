@@ -1,0 +1,9 @@
+When the config option "ancestor-masks-included" is unset, which is it
+by default, the image asset of this PSD should be
+ancestor-masks-not-included.png. When the the config option
+"ancestor-masks-included" is explicitly set the image asset of this
+PSD should instead be ancestor-masks-included.png. 
+
+The test framework is not currently flexibile enough handle both of
+these cases automatically, but both results are included here for
+manual verification.
