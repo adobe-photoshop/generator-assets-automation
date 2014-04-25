@@ -225,6 +225,17 @@
             return Q.nfcall(fse.copy, source, dest);
         })
         .then(function () {
+            // Copy config to working dir
+            var source = path.resolve(test.baseDir, GENERATOR_CONFIG_FILE);
+
+            return Q.nfcall(fse.stat, source).then(function () {
+                var dest = path.resolve(test.workingDir, GENERATOR_CONFIG_FILE);
+                return Q.nfcall(fse.copy, source, dest);
+            }, function () {
+                // do nothing
+            })
+        })
+        .then(function () {
             return test;
         }));
     }
