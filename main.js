@@ -233,7 +233,7 @@
                 return Q.nfcall(fse.copy, source, dest);
             }, function () {
                 // do nothing
-            })
+            });
         })
         .then(function () {
             return test;
