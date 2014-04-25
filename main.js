@@ -31,7 +31,8 @@
         ASSETS_PLUGIN_ID = "generator-assets",
         ASSETS_PLUGIN_CHECK_INTERVAL = 1000, // one second
         FILES_TO_IGNORE = new RegExp("(.DS_Store)$|(desktop.ini)$", "i"),
-        MAX_CONCURRENT_COMPARE_JOBS = 10;
+        MAX_CONCURRENT_COMPARE_JOBS = 10,
+        GENERATOR_CONFIG_FILE = "generator.json";
 
     var path = require("path"),
         childProcess = require("child_process"),
@@ -228,14 +229,51 @@
         }));
     }
 
+    function getTestConfig(test) {
+        var configPath = path.resolve(test.workingDir, GENERATOR_CONFIG_FILE);
+
+        return Q.ninvoke(fse, "stat", configPath).then(function (stats) {
+            if (!stats.isFile()) {
+                return {};
+            }
+
+            return Q.ninvoke(fse, "readFile", configPath, { encoding: "utf8" }).then(function (data) {
+                var config;
+
+                try {
+                    var obj = JSON.parse(data);
+
+                    if (obj.hasOwnProperty(ASSETS_PLUGIN_ID)) {
+                        config = obj[ASSETS_PLUGIN_ID];
+                    } else {
+                        config = {};
+                    }
+                } catch (ex) {
+                    console.error("Unable to parse test config %s:", configPath, ex.message);
+                    config = {};
+                }
+
+                return config;
+            });
+        }, function () {
+            return {};
+        });
+    }
+
     function openAndGenerate(test) {
-        var plugin = null;
+        var plugin = null,
+            savedConfig = null;
 
         return (getAssetsPlugin()
         .then(function (thePlugin) {
             plugin = thePlugin;
+            savedConfig = plugin._getConfig();
+
+            return getTestConfig(test);
         })
-        .then(function () {
+        .then(function (config) {
+            plugin._setConfig(config);
+
             return openPhotoshopDocument(path.resolve(test.workingDir, test.input));
         })
         .then(function (id) {
@@ -253,6 +291,8 @@
         })
         .then(function () {
             test.stopTime = new Date();
+            plugin._setConfig(savedConfig);
+
             return test;
         }));
     }
