@@ -283,6 +283,8 @@
             return getTestConfig(test);
         })
         .then(function (config) {
+            test.maxCompareMetric = config["max-compare-metric"] || 0;
+
             plugin._setConfig(config);
 
             return openPhotoshopDocument(path.resolve(test.workingDir, test.input));
@@ -478,8 +480,9 @@
                         path.resolve(test.workingDir, test.output, f))
                     .then(function (metric) {
                         result.comparisons.push({file : f, metric : metric});
-                        if (metric > 0) {
-                            result.errors.push("file " + f + " has a comparison metric of " + metric);
+                        if (metric > test.maxCompareMetric) {
+                            result.errors.push("file " + f + " has a comparison metric of " + metric +
+                                " > " + test.maxCompareMetric);
                         }
                     }));
                 };

@@ -1,0 +1,6 @@
+{
+	"generator-assets": {
+		"allow-dither": true,
+		"max-compare-metric": 100
+	}
+}
