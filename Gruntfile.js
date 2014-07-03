@@ -35,20 +35,35 @@ module.exports = function (grunt) {
             options : {
                 jshintrc : ".jshintrc"
             },
-            all : [
+            js : [
                 "*.js",
+                "lib/**/*.js",
+                "test/**/*.js"
+            ],
+            jsx : [
+                "lib/**/*.jsx"
+            ],
+            json : [
                 "package.json",
                 ".jshintrc",
-                "lib/**/*.js",
-                "lib/jsx/**/*.jsx",
-                "test/**/*.js"
+                ".jscsrc"
             ]
+        },
+        
+        jscs: {
+            js: "<%= jshint.js %>",
+            jsx: "<%= jshint.jsx %>",
+            options: {
+                config: ".jscsrc"
+            }
         }
+
     });
 
     grunt.loadNpmTasks("grunt-contrib-jshint");
+    grunt.loadNpmTasks("grunt-jscs");
 
-    grunt.registerTask("test", ["jshint"]);
+    grunt.registerTask("test", ["jshint", "jscs"]);
 
     grunt.registerTask("default", ["test"]);
 
