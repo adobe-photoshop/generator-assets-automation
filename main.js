@@ -541,8 +541,7 @@
             results.forEach(function (result) {
                 if (typeof(result) !== "object" || !result.hasOwnProperty("passed")) {
                     summary += "execution error: " + String(result) + "\n";
-                }
-                else if (result.passed) {
+                } else if (result.passed) {
                     summary += "passed: " + result.name + " - " + result.time + " seconds\n";
                     passedCount++;
                 } else {
@@ -553,7 +552,7 @@
                 }
             });
 
-            summary = "" + passedCount + "/" + results.length + " tests passed\n\n" + summary;
+            summary = passedCount + "/" + results.length + " tests passed\n\n" + summary;
 
             if (allStartTime && allStopTime) {
                 summary += "\nTotal test time (including automation overhead): " +
