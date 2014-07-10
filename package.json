@@ -1,6 +1,6 @@
 {
   "name": "generator-assets-automation",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Automated testing for Photoshop Generator 'Asset Generation' plugin",
   "main": "main.js",
   "generator-core-version": "~3",
