@@ -8,6 +8,13 @@ To learn more about Generator and creating your own Generator plug-ins, please v
 
 To run the automation plug-in, first close all open documents and then select "Run Assets Automation" from the Generate menu.
 
+### Plug-in Configuration
+
+The plug-in can be configured in your user-level `generator.json` file with the following options:
+
+1. `working-directory` - default value: a temporary directory - Indicates the directory into which assets are generated while running tests
+2. `cleanup` - default value: `true` - Indicates whether or not assets generated while runing tests should be cleaned up afterwards.
+
 ### License
 
 (MIT License)
