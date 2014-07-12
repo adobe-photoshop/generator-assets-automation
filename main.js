@@ -215,7 +215,7 @@
                 return Q.nfcall(tmp.dir, {unsafeCleanup : true});
             }
         })
-        .then(function (workingDir) {
+        .spread(function (workingDir) {
             test.workingDir = workingDir;
 
             var source = path.resolve(test.baseDir, test.input),
