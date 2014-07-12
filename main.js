@@ -212,7 +212,10 @@
                     return workingDir;
                 }));
             } else {
-                return Q.nfcall(tmp.dir, {unsafeCleanup : true});
+                return (Q.nfcall(tmp.dir, {unsafeCleanup : true})
+                .spread(function (workingDir) {
+                    return workingDir;
+                }));
             }
         })
         .then(function (workingDir) {
