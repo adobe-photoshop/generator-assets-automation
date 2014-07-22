@@ -32,7 +32,8 @@
         ASSETS_PLUGIN_CHECK_INTERVAL = 1000, // one second
         FILES_TO_IGNORE = new RegExp("(.DS_Store)$|(desktop.ini)$", "i"),
         MAX_CONCURRENT_COMPARE_JOBS = 10,
-        GENERATOR_CONFIG_FILE = "generator.json";
+        GENERATOR_CONFIG_FILE = "generator.json",
+        DEFAULT_MAX_COMPARE_METRIC = 10;
 
     var path = require("path"),
         childProcess = require("child_process"),
@@ -286,7 +287,7 @@
             return getTestConfig(test);
         })
         .then(function (config) {
-            test.maxCompareMetric = config["max-compare-metric"] || 0;
+            test.maxCompareMetric = config["max-compare-metric"] || DEFAULT_MAX_COMPARE_METRIC;
 
             plugin._setConfig(config);
 
