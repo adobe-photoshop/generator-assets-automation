@@ -33,13 +33,15 @@
         FILES_TO_IGNORE = new RegExp("(.DS_Store)$|(desktop.ini)$", "i"),
         MAX_CONCURRENT_COMPARE_JOBS = 10,
         GENERATOR_CONFIG_FILE = "generator.json",
-        DEFAULT_MAX_COMPARE_METRIC = 10;
+        DEFAULT_MAX_COMPARE_METRIC = 10,
+        TEST_RESULT_SUMMARY_FILE = "generator-auto-summary.txt";
 
     var path = require("path"),
         childProcess = require("child_process"),
         Q = require("q"),
         tmp = require("tmp"),
-        fse = require("fs-extra");
+        fse = require("fs-extra"),
+        fs = require("fs");
 
     // clean up temp files even if there's an uncaught exception
     tmp.setGracefulCleanup(true);
@@ -50,7 +52,8 @@
         _assetsPluginDeferred = Q.defer(),
         _psExecutablePathPromise = null,
         _idleDeferred = null,
-        _activeDeferred = Q.defer();
+        _activeDeferred = Q.defer(),
+        _homeDirectory = process.env[(process.platform === "win32") ? "USERPROFILE" : "HOME"];
 
     function getAssetsPlugin() {
         return _assetsPluginDeferred.promise;
@@ -594,7 +597,13 @@
             _logger.info("ALL THE RESULTS:\n%s\n\n", JSON.stringify(results, null, "  "));
             var summary = summarizeResults(results);
             _logger.info("\n\nSUMMARY:\n\n%s\n\n", summary);
-            _generator.alert("Generator automated test summary:\n\n" + summary);
+            fs.writeFile(_homeDirectory + "/" + TEST_RESULT_SUMMARY_FILE, summary, function (err) {
+                if (err) {
+                    _generator.alert(err + "\n\nGenerator automated test summary:\n\n" + summary);
+                } else {
+                    _generator.alert("Generator automated test summary:\n\n" + summary);
+                }
+            });
         }));
     }
 
