@@ -40,8 +40,7 @@
         childProcess = require("child_process"),
         Q = require("q"),
         tmp = require("tmp"),
-        fse = require("fs-extra"),
-        fs = require("fs");
+        fse = require("fs-extra");
 
     // clean up temp files even if there's an uncaught exception
     tmp.setGracefulCleanup(true);
@@ -592,18 +591,18 @@
             }, Q.call());
         })
         .done(function () {
-            _logger.info("...all tests done");
             allStopTime = new Date();
             _logger.info("ALL THE RESULTS:\n%s\n\n", JSON.stringify(results, null, "  "));
             var summary = summarizeResults(results);
             _logger.info("\n\nSUMMARY:\n\n%s\n\n", summary);
-            fs.writeFile(_homeDirectory + "/" + TEST_RESULT_SUMMARY_FILE, summary, function (err) {
+            fse.writeFile(_homeDirectory + "/" + TEST_RESULT_SUMMARY_FILE, summary, function (err) {
                 if (err) {
                     _generator.alert(err + "\n\nGenerator automated test summary:\n\n" + summary);
                 } else {
                     _generator.alert("Generator automated test summary:\n\n" + summary);
                 }
             });
+            _logger.info("...all tests done");
         }));
     }
 
