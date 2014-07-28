@@ -636,7 +636,7 @@
             }
         }, ASSETS_PLUGIN_CHECK_INTERVAL);
 
-        if(_config["autorun"] === true ){
+        if (_config.autorun === true) {
             runAllTests();
         }
     }
