@@ -588,11 +588,21 @@
                 return soFar.then(f);
             }, Q.call());
         })
-        .done(function () {
+        .then(function () {
+            var summary = summarizeResults(results);
+            if (!!_config["results-log-path"]) {
+                var resultsLogPath = _config["results-log-path"];
+
+                return Q.ninvoke(fse, "writeFile", resultsLogPath, summary)
+                    .thenResolve(summary);
+            } else {
+                return new Q(summary);
+            }
+        })
+        .done(function (summary) {
             _logger.info("...all tests done");
             allStopTime = new Date();
             _logger.info("ALL THE RESULTS:\n%s\n\n", JSON.stringify(results, null, "  "));
-            var summary = summarizeResults(results);
             _logger.info("\n\nSUMMARY:\n\n%s\n\n", summary);
             _generator.alert("Generator automated test summary:\n\n" + summary);
         }));
@@ -626,8 +636,9 @@
             }
         }, ASSETS_PLUGIN_CHECK_INTERVAL);
 
-        // runAllTests();
-
+        if (_config.autorun === true) {
+            runAllTests();
+        }
     }
 
     exports.init = init;
