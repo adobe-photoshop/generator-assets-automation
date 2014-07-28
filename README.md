@@ -15,6 +15,7 @@ The plug-in can be configured in your user-level `generator.json` file with the 
 1. `working-directory` - default value: a temporary directory - Indicates the directory into which assets are generated while running tests
 2. `cleanup` - default value: `true` - Indicates whether or not assets generated while runing tests should be cleaned up afterwards.
 3. `results-log-path` - Indicates the file path to which a summary of test results should be written. If not set, no results log is written.
+4. `autorun` - default value: `false` - Indicates that the automation tests should run automatically on startup. 
 
 ### License
 
