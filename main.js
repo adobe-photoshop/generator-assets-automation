@@ -636,8 +636,9 @@
             }
         }, ASSETS_PLUGIN_CHECK_INTERVAL);
 
-        // runAllTests();
-
+        if(_config["autorun"] === true ){
+            runAllTests();
+        }
     }
 
     exports.init = init;
