@@ -604,7 +604,9 @@
             allStopTime = new Date();
             _logger.info("ALL THE RESULTS:\n%s\n\n", JSON.stringify(results, null, "  "));
             _logger.info("\n\nSUMMARY:\n\n%s\n\n", summary);
-            _generator.alert("Generator automated test summary:\n\n" + summary);
+            if (!_config.autorun) {
+                _generator.alert("Generator automated test summary:\n\n" + summary);
+            }
         }));
     }
 
