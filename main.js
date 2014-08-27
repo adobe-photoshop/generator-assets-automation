@@ -31,6 +31,7 @@
         ASSETS_PLUGIN_ID = "generator-assets",
         ASSETS_PLUGIN_CHECK_INTERVAL = 1000, // one second
         FILES_TO_IGNORE = new RegExp("(.DS_Store)$|(desktop.ini)$", "i"),
+        ERRORS_TXT = "errors.txt",
         MAX_CONCURRENT_COMPARE_JOBS = 10,
         GENERATOR_CONFIG_FILE = "generator.json",
         DEFAULT_MAX_COMPARE_METRIC = 10;
@@ -468,7 +469,9 @@
                 if (i < 0) {
                     result.errors.push("file " + b + " missing from output");
                 } else {
-                    toCompare.push(b);
+                    if (path.basename(b) !== ERRORS_TXT) {
+                        toCompare.push(b);
+                    }
                     actualFilesCopy.splice(i, 1);
                 }
             });
