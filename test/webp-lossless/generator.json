@@ -1,0 +1,6 @@
+{
+    "generator-assets": {
+        "webp-enabled": true,
+        "webp-lossless": true
+    }
+}
