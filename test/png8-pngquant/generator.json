@@ -1,5 +1,6 @@
 {
-	"generator-assets": {
-		"use-pngquant": true
-	}
+    "generator-assets": {
+        "use-pngquant": true,
+        "max-compare-metric": 500
+    }
 }
