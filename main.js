@@ -295,6 +295,9 @@
             return openPhotoshopDocument(path.resolve(test.workingDir, test.input));
         })
         .then(function (id) {
+            if (!id) {
+                throw new Error("Did not get a valid document ID after opening the document");
+            }
             var activePromise = _whenActive(plugin, id);
 
             test.documentID = id;
