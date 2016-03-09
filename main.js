@@ -485,13 +485,18 @@
                     return (comparePixels(
                         path.resolve(test.baseDir, test.output, f),
                         path.resolve(test.workingDir, test.output, f))
-                    .then(function (metric) {
-                        result.comparisons.push({file : f, metric : metric});
-                        if (metric > test.maxCompareMetric) {
-                            result.errors.push("file " + f + " has a comparison metric of " + metric +
-                                " > " + test.maxCompareMetric);
-                        }
-                    }));
+                    .then(
+                        function (metric) {
+                            result.comparisons.push({file : f, metric : metric});
+                            if (metric > test.maxCompareMetric) {
+                                result.errors.push("file " + f + " has a comparison metric of " + metric +
+                                    " > " + test.maxCompareMetric);
+                            }
+                        },
+                        function (rejection) {
+                            result.comparisons.push({file : f, metric : 1000000});
+                            result.errors.push("file " + f + " Failed completely during comparison:" + rejection);
+                        }));
                 };
             });
 
