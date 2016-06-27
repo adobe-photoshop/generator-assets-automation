@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="247" height="129" viewBox="0 0 247 129">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: lime;
+        stroke: #f0f;
+        stroke-width: 20px;
+      }
+    </style>
+  </defs>
+  <rect id="nested-rect.png_nested-rect.jpg_nested-rect.gif_nested-rect.svg" data-name="nested-rect.png, nested-rect.jpg, nested-rect.gif, nested-rect.svg" class="cls-1" x="10" y="10" width="460" height="512"/>
+</svg>
