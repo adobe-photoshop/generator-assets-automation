@@ -1,1 +1,1 @@
-[Wed Aug 27 2014 12:57:33 GMT-0700 (PDT)] Layer Comp "default 100% this/should/do/nothing/": Default spec in layer comp names are unsupported.
+[10/19/2016, 2:44:59 PM] layer-comp "default 100% this/should/do/nothing/": Default spec in layer comp names are unsupported.
