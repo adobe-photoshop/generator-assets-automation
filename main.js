@@ -34,7 +34,8 @@
         ERRORS_TXT = "errors.txt",
         MAX_CONCURRENT_COMPARE_JOBS = 10,
         GENERATOR_CONFIG_FILE = "generator.json",
-        DEFAULT_MAX_COMPARE_METRIC = 10;
+        DEFAULT_MAX_COMPARE_METRIC = 10,
+        META_PLUGIN_ID = "crema";
 
     var path = require("path"),
         childProcess = require("child_process"),
@@ -626,6 +627,111 @@
             }
         }));
     }
+    
+    var findLayerByIndex =  function (layers, index) {
+        var i,
+            ret;
+        for (i = 0; i < layers.length; i++) {
+            if (layers[i].index === index) {
+                return layers[i];
+            }
+            if (layers[i].layers && layers[i].layers.length > 0) {
+                ret = findLayerByIndex(layers[i].layers, index);
+                if (ret) {
+                    return ret;
+                }
+            }
+        }
+    };
+    
+    var addMetaDataTestMenus = function () {
+            
+        var onMetaDataTestMenu = function (event) {
+            if (event.generatorMenuChanged.name === "CREMA-META-DATA-ZAP") {
+                Q.all([_generator.getDocumentInfo(null, null), getAssetsPlugin()])
+                    .spread(function (gDoc, thePlugin) {
+                        try {
+                            var doc = JSON.parse(JSON.stringify(gDoc)),
+                                layer,
+                                parseResults,
+                                layerNameParse = thePlugin._layerNameParse;
+
+                            //apply some settings to the currently selected layer
+                            if (doc.selection.length > 0) {
+                                layer = findLayerByIndex(doc.layers, doc.selection[0]);
+                                parseResults = layerNameParse(layer.name);
+
+                                if (parseResults) {
+                                    _generator.setLayerSettingsForPlugin({
+                                        assetSettings: parseResults
+                                    }, layer.id, META_PLUGIN_ID);
+                                }
+                            }
+                        } catch (ex2) {
+                            console.log("exception zapping: " + ex2.stack);
+                        }
+                    });
+            } else if (event.generatorMenuChanged.name === "CREMA-META-DATA-TEST") {
+                _generator.getDocumentInfo(null, null).then(function (gDoc) {
+                    var doc = JSON.parse(JSON.stringify(gDoc)),
+                        layerId;
+
+                    _generator.setDocumentSettingsForPlugin({
+                        metaEnabled: true,
+                        scaleSettings: [{
+                            scale: 1
+                        }, {
+                            folder: "scaled-at-25",
+                            scale: 0.25
+                        }, {
+                            folder: "scaled-at-200",
+                            suffix: "@2x",
+                            scale: 2
+                        }]
+                    }, META_PLUGIN_ID);
+
+                    //apply some settings to the currently selected layer
+                    if (doc.selection.length > 0) {
+                        layerId = findLayerByIndex(doc.layers, doc.selection[0]).id;
+                        _generator.setLayerSettingsForPlugin({
+                            //same as name: "layer.png-32",
+                            assetSettings: [{
+                                extension: "png",
+                                quality: 32,
+                                file: "layer.png"
+                            }]
+                        }, layerId, META_PLUGIN_ID);
+
+                    }
+                });
+            } else if (event.generatorMenuChanged.name === "CREMA-META-DATA-SHOW-LAYER" ||
+                       event.generatorMenuChanged.name === "CREMA-META-DATA-SHOW-DOCUMENT") {
+                var alertDoc = event.generatorMenuChanged.name === "CREMA-META-DATA-SHOW-DOCUMENT",
+                    json  = "",
+                    metaSource;
+                _generator.getDocumentInfo(null, null).then(function (gDoc) {
+                    var doc = JSON.parse(JSON.stringify(gDoc));
+                    if (alertDoc) {
+                        metaSource = doc;
+                    } else if (doc.selection.length > 0) {
+                        metaSource = findLayerByIndex(doc.layers, doc.selection[0]);
+                    }
+                    json  = metaSource &&
+                            metaSource.generatorSettings &&
+                            metaSource.generatorSettings[META_PLUGIN_ID] &&
+                            metaSource.generatorSettings[META_PLUGIN_ID].json;
+                    _generator.alert("Result: " + json);
+                });
+            }
+        };
+
+        console.log("test adding menu items");
+        _generator.addMenuItem("CREMA-META-DATA-TEST", "Apply meta-data to selection", true, false);
+        _generator.addMenuItem("CREMA-META-DATA-ZAP", "Layer syntax to meta-data", true, false);
+        _generator.addMenuItem("CREMA-META-DATA-SHOW-LAYER", "Alert layer meta-data", true, false);
+        _generator.addMenuItem("CREMA-META-DATA-SHOW-DOCUMENT", "Alert document meta-data", true, false);
+        _generator.onPhotoshopEvent("generatorMenuChanged", onMetaDataTestMenu);
+    };
 
     function init(generator, config, logger) {
         _generator = generator;
@@ -646,6 +752,8 @@
             true,
             false
         );
+        
+        addMetaDataTestMenus();
 
         var getAssetsPluginInterval = setInterval(function () {
             var plugin = _generator.getPlugin(ASSETS_PLUGIN_ID);
