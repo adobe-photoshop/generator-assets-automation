@@ -76,7 +76,13 @@
             return plugin._status.whenIdle();
         }
 
-        plugin._assetManagers[id].once("idle", function () {
+        var assetManager = plugin._assetManagers.get(id);
+
+        if (!assetManager) {
+            return Q.reject();
+        }
+
+        assetManager.once("idle", function () {
             _idleDeferred.resolve();
             _idleDeferred = null;
             _activeDeferred = Q.defer();
@@ -91,7 +97,7 @@
             return;
         }
 
-        plugin._stateManager.activate(documentId);
+        plugin.startAssetGeneration(documentId);
     }
 
     function getTestSpecForDir(baseDir) {
