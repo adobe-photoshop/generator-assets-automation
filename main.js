@@ -28,6 +28,7 @@
         OUTPUT_FOLDER_SUFFIX = "-assets",
         DISABLED_TEST_FOLDER_SUFFIX = "-disabled",
         MENU_ID = "generator-assets-automation",
+        SURVEY_MENU_ID = "generator-assets-automation-survey",
         ASSETS_PLUGIN_ID = "generator-assets",
         ASSETS_PLUGIN_CHECK_INTERVAL = 1000, // one second
         FILES_TO_IGNORE = new RegExp("(.DS_Store)$|(desktop.ini)$", "i"),
@@ -191,6 +192,7 @@
     }
 
     function closeAllPhotoshopDocuments() {
+        _logger.info('closing')
         return _generator.evaluateJSXFile(path.resolve(__dirname, "lib/jsx/closeAll.jsx"));
     }
 
@@ -296,7 +298,7 @@
         })
         .then(function (id) {
             if (!id) {
-                throw new Error("Did not get a valid document ID after opening the document");
+                throw new Error("Did not get a valid document ID after opening the document: " + test.input);
             }
             var activePromise = _whenActive(plugin, id);
 
@@ -621,6 +623,79 @@
         }));
     }
 
+
+    // Survey: show spreadsheet of test info based off of test folder and psd layer names
+    
+    function getLayerNamesPhotoshopDocument(documentPath) {
+        return _generator.evaluateJSXFile(
+            path.resolve(__dirname, "lib/jsx/openFile.jsx"),
+            // path.resolve(__dirname, "lib/jsx/openFileGetLayers.jsx"),
+            {filename : documentPath}
+        ).then(function (id) {
+            return _generator.getDocumentInfo(id, {
+                compInfo:             false,
+                imageInfo:            false,
+                layerInfo:            true,
+                expandSmartObjects:   false,
+                getTextStyles:        false,
+                getFullTextStyles:    false,
+                selectedLayers:       false,
+                getCompLayerSettings: false,
+                getDefaultLayerFX:    false,
+                getPathData:          false
+            })
+        }).then ( function ( info ) {
+            return info.layers.map( function (elem) { return elem.name } )
+        })
+    }
+
+    function openAndGetLayerNames(test) {
+        var docPath = path.resolve( test.baseDir, test.input );
+        return getLayerNamesPhotoshopDocument( docPath )
+            .then(function (result) {
+                result.unshift(test.name)
+                _logger.info(result)
+                return result
+            })
+    }
+
+    function runSurvey() {
+        _logger.info("Running all test survey...");
+        var results = []
+        getTests()
+        .then(function (theTests) {
+            var testFuncs = theTests.map(function (test) {
+                return function () {
+                    return ( 
+                        closeAllPhotoshopDocuments()
+                    .then( function () {
+                        return openAndGetLayerNames(test)
+                    })
+                    .then(function (names) {
+                        results.push(names);
+                    }));
+                };
+            });
+
+            testFuncs.push(closeAllPhotoshopDocuments); // close the last doc
+
+            return testFuncs.reduce(function (soFar, f) {
+                return soFar.then(f);
+            }, Q.call());
+        })
+
+        .then( function () {
+            // _generator.alert( results.reduce( function(accu, item) { return accu + item.toString() }, ""  ) )
+            _logger.info("Survey complete");
+        })
+        .catch(function (error) {
+            _logger.info(error)
+        }).done();
+    }
+
+    // End Survey
+    
+
     function init(generator, config, logger) {
         _generator = generator;
         _config = config;
@@ -631,12 +706,23 @@
         _generator.onPhotoshopEvent("generatorMenuChanged", function (e) {
             if (e.generatorMenuChanged.name === MENU_ID) {
                 runAllTests();
+            } else if (e.generatorMenuChanged.name === SURVEY_MENU_ID) {
+                runSurvey();
             }
         });
 
         _generator.addMenuItem(
             MENU_ID,
             "Run Assets Automation",
+            true,
+            false
+        );
+
+        // Add Survey to Generator menu
+        //_logger.info("Adding Survey menu item")
+        _generator.addMenuItem(
+            SURVEY_MENU_ID,
+            "Run Assets Automation Survey",
             true,
             false
         );
@@ -652,6 +738,9 @@
         if (_config.autorun === true) {
             runAllTests();
         }
+
+        ///**********************
+        runSurvey()
     }
 
     exports.init = init;
