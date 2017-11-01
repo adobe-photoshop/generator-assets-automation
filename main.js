@@ -41,7 +41,8 @@
         childProcess = require("child_process"),
         Q = require("q"),
         tmp = require("tmp"),
-        fse = require("fs-extra");
+        fse = require("fs-extra"),
+        os = require("os");
 
     // clean up temp files even if there's an uncaught exception
     tmp.setGracefulCleanup(true);
@@ -686,7 +687,9 @@
 
         .then( function () {
             // _generator.alert( results.reduce( function(accu, item) { return accu + item.toString() }, ""  ) )
-            _logger.info("Survey complete");
+            _logger.info("Survey complete: " + results.length + " tests");
+            fse.outputFile(os.homedir() + '/Desktop/gaaSurvey_output.csv', results.join("\n"),  function(err) { _logger.info(err)} ) 
+            // .then( ()=> { _logger.info("Survey output written to " outPath)})//  , ()=>{_logger.info("Survey write to file failed.")} )
         })
         .catch(function (error) {
             _logger.info(error)
