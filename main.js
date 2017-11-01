@@ -742,8 +742,6 @@
             runAllTests();
         }
 
-        ///**********************
-        runSurvey()
     }
 
     exports.init = init;
