@@ -596,6 +596,7 @@
         var allStartTime = new Date(),
             allStopTime = null;
 
+
         function summarizeResults(results) {
             var summary = "",
                 passedCount = 0;
@@ -634,6 +635,7 @@
                     .then(function (test) {
                         var result = test.result;
                         result.name = test.name;
+                        result.cremaTestDuration = test.cremaTestDuration;
                         results.push(result);
                     }));
                 };
@@ -662,6 +664,8 @@
             allStopTime = new Date();
             _logger.info("ALL THE RESULTS:\n%s\n\n", JSON.stringify(results, null, "  "));
             _logger.info("\n\nSUMMARY:\n\n%s\n\n", summary);
+            _logger.info("Crema Times:", results.map((r) => r.name + "~" + r.cremaTestDuration));
+            _logger.info("Total time spent on crema", results.reduce((v, r) => {return v + r.cremaTestDuration;}, 0));
             if (!_config.autorun) {
                 _generator.alert("Generator automated test summary:\n\n" + summary);
             }
