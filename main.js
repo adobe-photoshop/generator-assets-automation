@@ -52,17 +52,19 @@
         _config,
         _logger,
         _assetsPluginDeferred = Q.defer(),
+        _assetsPluginPromise = _assetsPluginDeferred.promise.timeout(10000),
         _cremaTesterDeferred = Q.defer(),
+        _cremaTesterPromise = _cremaTesterDeferred.promise.timeout(10000),
         _psExecutablePathPromise = null,
         _idleDeferred = null,
         _activeDeferred = Q.defer();
 
     function getAssetsPlugin() {
-        return _assetsPluginDeferred.promise;
+        return _assetsPluginPromise;
     }
 
     function getCremaTester() {
-        return _cremaTesterDeferred.promise;
+        return _cremaTesterPromise;
     }
 
     function _whenActive(plugin) {
@@ -346,7 +348,7 @@
         var subdirPromises = subdirs.map((subdir) => {
             var curDir = path.resolve(baseDirectory, subdir);
 
-            return Q(Q.nfcall(fse.readdir, curDir)
+            return Q(Q.nfcall(fse.readdir, curDir) // jshint ignore:line
                 .then(
                     function (files) {
                         var statPromises = files.map(function (f) {
@@ -700,14 +702,16 @@
             }
         }, ASSETS_PLUGIN_CHECK_INTERVAL);
 
-        // TODO use Q.timeout for this
         var getCremaPluginInterval = setInterval(function () {
             var plugin = _generator.getPlugin(CREMA_PLUGIN_ID);
             if (plugin) {
-                setTimeout(() => {
+                try {
                     var cremaTester = new CremaTester(plugin);
                     _cremaTesterDeferred.resolve(cremaTester);
-                }, 1); // setTimeout just for debugging
+                } catch (e) {
+                    _cremaTesterDeferred.reject(e);
+                }
+
                 clearInterval(getCremaPluginInterval);
             }
         }, ASSETS_PLUGIN_CHECK_INTERVAL);
