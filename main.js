@@ -29,18 +29,21 @@
         DISABLED_TEST_FOLDER_SUFFIX = "-disabled",
         MENU_ID = "generator-assets-automation",
         ASSETS_PLUGIN_ID = "generator-assets",
+        CREMA_PLUGIN_ID = "crema",
         ASSETS_PLUGIN_CHECK_INTERVAL = 1000, // one second
         FILES_TO_IGNORE = new RegExp("(.DS_Store)$|(desktop.ini)$", "i"),
         ERRORS_TXT = "errors.txt",
         MAX_CONCURRENT_COMPARE_JOBS = 10,
         GENERATOR_CONFIG_FILE = "generator.json",
+        CREMA_ASSSET_DIR = "crema-assets",
         DEFAULT_MAX_COMPARE_METRIC = 10;
 
     var path = require("path"),
         childProcess = require("child_process"),
         Q = require("q"),
         tmp = require("tmp"),
-        fse = require("fs-extra");
+        fse = require("fs-extra"),
+        CremaTester = require("./lib/crema-tester");
 
     // clean up temp files even if there's an uncaught exception
     tmp.setGracefulCleanup(true);
@@ -49,12 +52,19 @@
         _config,
         _logger,
         _assetsPluginDeferred = Q.defer(),
+        _assetsPluginPromise = _assetsPluginDeferred.promise.timeout(10000),
+        _cremaTesterDeferred = Q.defer(),
+        _cremaTesterPromise = _cremaTesterDeferred.promise.timeout(10000),
         _psExecutablePathPromise = null,
         _idleDeferred = null,
         _activeDeferred = Q.defer();
 
     function getAssetsPlugin() {
-        return _assetsPluginDeferred.promise;
+        return _assetsPluginPromise;
+    }
+
+    function getCremaTester() {
+        return _cremaTesterPromise;
     }
 
     function _whenActive(plugin) {
@@ -318,41 +328,76 @@
         }));
     }
 
-    function getAllFiles(baseDirectory, additionalDirectories) {
-        additionalDirectories = additionalDirectories || "";
+    function cremaTest(test) {
+        return getCremaTester().then(
+            (cremaTester) => {
+                return cremaTester.runTest(test);
+            },
+            (err) => {
+                console.log("SKIPPING CREMA TEST - no plugin found", err);
+                return test;
+            }
+        );
+    }
 
-        return (Q.nfcall(fse.readdir, path.resolve(baseDirectory, additionalDirectories))
-        .then(function (files) {
-            var statPromises = files.map(function (f) {
-                return (Q.nfcall(fse.stat, path.resolve(baseDirectory, additionalDirectories, f))
-                .then(function (stats) {
-                    return {filename: f, stats: stats};
+    function getAllFiles(baseDirectory, subdirs) {
+        if (!Array.isArray(subdirs)) {
+            throw new Error ("subdirs must be an array");
+        }
+
+        var subdirPromises = subdirs.map((subdir) => {
+            var curDir = path.resolve(baseDirectory, subdir);
+
+            return Q(Q.nfcall(fse.readdir, curDir) // jshint ignore:line
+                .then(
+                    function (files) {
+                        var statPromises = files.map(function (f) {
+                            return (Q.nfcall(fse.stat, path.resolve(curDir, f))
+                            .then(function (stats) {
+                                return {filename: f, stats: stats};
+                            }));
+                        });
+
+                        return Q.all(statPromises);
+                    },
+                    function (err) {
+                        if (subdir === CREMA_ASSSET_DIR) {
+                            // Ignore crema asset directory if it doesn't exists
+                            return [];
+                        } else {
+                            throw new Error("Could not read directory", curDir, err);
+                        }
+                    })
+                .then(function (filesAndDirectories) {
+                    var files = [],
+                        directories = [];
+
+                    filesAndDirectories.forEach(function (f) {
+                        if (f.stats.isDirectory()) {
+                            directories.push(f.filename);
+                        } else if (f.stats.isFile()) {
+                            files.push(path.resolve(curDir, f.filename));
+                        }
+                    });
+
+                    var recursePromises = directories.map(function (d) {
+                        return getAllFiles(curDir, [d]);
+                    });
+
+                    return (Q.all(recursePromises)
+                    .then(function (recurseResults) {
+                        return Array.prototype.concat.apply(files, recurseResults);
+                    }));
                 }));
-            });
+        });
 
-            return Q.all(statPromises);
-        })
-        .then(function (filesAndDirectories) {
-            var files = [],
-                directories = [];
+        // flatten the subdirs into one list
+        return Q.all(subdirPromises).then((filesets) => {
+            return filesets.reduce((acc, cur) => {
+                return acc.concat(cur);
+            }, []);
+        });
 
-            filesAndDirectories.forEach(function (f) {
-                if (f.stats.isDirectory()) {
-                    directories.push(path.join(additionalDirectories, f.filename));
-                } else if (f.stats.isFile()) {
-                    files.push(path.join(additionalDirectories, f.filename));
-                }
-            });
-
-            var recursePromises = directories.map(function (d) {
-                return getAllFiles(baseDirectory, d);
-            });
-
-            return (Q.all(recursePromises)
-            .then(function (recurseResults) {
-                return Array.prototype.concat.apply(files, recurseResults);
-            }));
-        }));
     }
 
     function runInBatches(functions) {
@@ -451,12 +496,15 @@
         };
 
         return (Q.all([
-            getAllFiles(path.resolve(test.baseDir, test.output), ""),
-            getAllFiles(path.resolve(test.workingDir, test.output), "")
+            getAllFiles(test.baseDir, [test.output, CREMA_ASSSET_DIR]),
+            getAllFiles(test.workingDir, [test.output, CREMA_ASSSET_DIR])
         ]).spread(function (_base, _working) {
             var toCompare = [],
                 compareFunctions,
                 actualFilesCopy;
+
+            _base = _base.map((file) => path.relative(test.baseDir, file));
+            _working = _working.map((file) => path.relative(test.workingDir, file));
 
             result.specFiles = _base.filter(function (file) {
                 return !FILES_TO_IGNORE.test(file);
@@ -486,8 +534,8 @@
             compareFunctions = toCompare.map(function (f) {
                 return function () {
                     return (comparePixels(
-                        path.resolve(test.baseDir, test.output, f),
-                        path.resolve(test.workingDir, test.output, f))
+                        path.resolve(test.baseDir, f),
+                        path.resolve(test.workingDir, f))
                     .then(
                         function (metric) {
                             result.comparisons.push({file : f, metric : metric});
@@ -531,6 +579,7 @@
 
         return (setup(test)
         .then(openAndGenerate)
+        .then(cremaTest)
         .then(compare)
         .then(teardown)
         .then(function () {
@@ -548,6 +597,7 @@
 
         var allStartTime = new Date(),
             allStopTime = null;
+
 
         function summarizeResults(results) {
             var summary = "",
@@ -587,6 +637,7 @@
                     .then(function (test) {
                         var result = test.result;
                         result.name = test.name;
+                        result.cremaTestDuration = test.cremaTestDuration;
                         results.push(result);
                     }));
                 };
@@ -615,6 +666,8 @@
             allStopTime = new Date();
             _logger.info("ALL THE RESULTS:\n%s\n\n", JSON.stringify(results, null, "  "));
             _logger.info("\n\nSUMMARY:\n\n%s\n\n", summary);
+            _logger.info("Crema Times:", results.map((r) => r.name + "~" + r.cremaTestDuration));
+            _logger.info("Total time spent on crema", results.reduce((v, r) => {return v + r.cremaTestDuration;}, 0));
             if (!_config.autorun) {
                 _generator.alert("Generator automated test summary:\n\n" + summary);
             }
@@ -646,6 +699,20 @@
             if (plugin) {
                 _assetsPluginDeferred.resolve(plugin);
                 clearInterval(getAssetsPluginInterval);
+            }
+        }, ASSETS_PLUGIN_CHECK_INTERVAL);
+
+        var getCremaPluginInterval = setInterval(function () {
+            var plugin = _generator.getPlugin(CREMA_PLUGIN_ID);
+            if (plugin) {
+                try {
+                    var cremaTester = new CremaTester(plugin);
+                    _cremaTesterDeferred.resolve(cremaTester);
+                } catch (e) {
+                    _cremaTesterDeferred.reject(e);
+                }
+
+                clearInterval(getCremaPluginInterval);
             }
         }, ASSETS_PLUGIN_CHECK_INTERVAL);
 
