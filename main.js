@@ -631,30 +631,33 @@
             var xml = "", // this will be the individual test results
                 failureCount = 0,
                 errorCount = 0,
-                indent = '    ';
+                indent = "    ",
+                classname = "generatorAssetsAutomation";
 
             results.forEach(function (result) {
-                xml += indent.repeat(2) + '<testcase classname="generatorAssetsAutomation" name="' + result.name + '" time="' + result.time + '">\n'
+                xml += indent.repeat(2) + "<testcase classname='" + classname + "'";
+                xml += " name='" + result.name + "' time='" + result.time + "'>\n";
                 if ( typeof(result) !== "object" || !result.hasOwnProperty("passed") ) {
-                    xml += indent.repeat(3) + '<error>' + String(result) + '</error>\n';
+                    xml += indent.repeat(3) + "<error>" + String(result) + "</error>\n";
                     errorCount++;
-                } else if (result.passed) {
+                // } else if (result.passed) {
                     // nothing else to do here
                 } else {
                     result.errors.forEach(function (error) {
-                        xml += indent.repeat(3) + '<failure message="failed">' + error + '</failure>\n'
+                        xml += indent.repeat(3) + "<failure message='failed'>" + error + "</failure>\n";
                     });
                     failureCount++;
                 }
-                xml += indent.repeat(2) + '</testcase>\n'
+                xml += indent.repeat(2) + "</testcase>\n";
             });
 
-            xml = '<?xml version="1.0" encoding="UTF-8"?>\n<testsuites>\n' +
-                indent.repeat(1) + '<testsuite name="generatorAssetsAutomation" errors="' + errorCount + '" tests="' + results.length + '" failures="' + failureCount + '"' + 
-                ( (allStartTime && allStopTime) ? ' time="' + ((allStopTime - allStartTime) / 1000) : '' ) + 
-                '>\n' +
+            xml = "<?xml version='1.0' encoding='UTF-8'?>\n<testsuites>\n" +
+                indent.repeat(1) + "<testsuite name='" + classname + "' errors='" + errorCount + "'" +
+                "tests='" + results.length + "' failures='" + failureCount + "'" + 
+                ( (allStartTime && allStopTime) ? "' time='" + ((allStopTime - allStartTime) / 1000) : "" ) + 
+                ">\n" +
                 xml + 
-                indent.repeat(1) + '</testsuite>\n</testsuites>'
+                indent.repeat(1) + "</testsuite>\n</testsuites>";
 
             return xml;
         }
@@ -684,12 +687,11 @@
         })
         .then(function () {
             if (!!_config["results-xml-path"]) {
-                _logger.info("Writing XML results to:  " , resultsXmlPath);
                 var resultsXmlPath = _config["results-xml-path"];
+                _logger.info("Writing XML results to:  " , resultsXmlPath);
                 return Q.ninvoke(fse,"writeFile", resultsXmlPath, xmlResults(results));
             } else {
-                return Q(true) ;
-        _logger.info(JSON.stringify(_config))
+                return new Q(true) ;
             }
         })
         .then(function () {
