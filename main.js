@@ -652,7 +652,7 @@
             });
 
             xml = "<?xml version='1.0' encoding='UTF-8'?>\n<testsuites>\n" +
-                indent.repeat(1) + "<testsuite name='" + classname + "' errors='" + errorCount + "'" +
+                indent.repeat(1) + "<testsuite name='" + classname + "' errors='" + errorCount + "' " +
                 "tests='" + results.length + "' failures='" + failureCount + "'" + 
                 ( (allStartTime && allStopTime) ? "' time='" + ((allStopTime - allStartTime) / 1000) : "" ) + 
                 ">\n" +
