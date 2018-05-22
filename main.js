@@ -636,25 +636,26 @@
 
             results.forEach(function (result) {
                 xml += indent.repeat(2) + "<testcase classname='" + classname + "'";
-                xml += " name='" + result.name + "' time='" + result.time + "'>\n";
+                if ( typeof(result) === "object" ) {
+                    xml += " name='" + result.name + "' time='" + result.time + "'";
+                }
+                xml += ">\n";
                 if ( typeof(result) !== "object" || !result.hasOwnProperty("passed") ) {
                     xml += indent.repeat(3) + "<error>" + String(result) + "</error>\n";
                     errorCount++;
-                // } else if (result.passed) {
-                    // nothing else to do here
-                } else {
+                } else if ( !result.passed ) {
                     result.errors.forEach(function (error) {
                         xml += indent.repeat(3) + "<failure message='failed'>" + error + "</failure>\n";
                     });
                     failureCount++;
-                }
+                } // else result is passed
                 xml += indent.repeat(2) + "</testcase>\n";
             });
 
             xml = "<?xml version='1.0' encoding='UTF-8'?>\n<testsuites>\n" +
-                indent.repeat(1) + "<testsuite name='" + classname + "' errors='" + errorCount + "' " +
-                "tests='" + results.length + "' failures='" + failureCount + "'" + 
-                ( (allStartTime && allStopTime) ? "' time='" + ((allStopTime - allStartTime) / 1000) : "" ) + 
+                indent.repeat(1) + "<testsuite name='" + classname + "' errors='" + errorCount + "'" +
+                " tests='" + results.length + "' failures='" + failureCount + "'" + 
+                ( (allStartTime && allStopTime) ? " time='" + ((allStopTime - allStartTime) / 1000) + "'" : "" ) + 
                 ">\n" +
                 xml + 
                 indent.repeat(1) + "</testsuite>\n</testsuites>";
@@ -691,7 +692,7 @@
                 _logger.info("Writing XML results to:  " , resultsXmlPath);
                 return Q.ninvoke(fse,"writeFile", resultsXmlPath, xmlResults(results));
             } else {
-                return new Q(true) ;
+                return true ;
             }
         })
         .then(function () {
