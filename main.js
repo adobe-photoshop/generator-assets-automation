@@ -188,9 +188,9 @@
         })
         .then(function (files) {
             var testDirs = files.filter(function (file) {
-                return ( file.stats.isDirectory() 
-                    && !isDisabledTestFolderName(file.filename) 
-                    && isSelectedTest(file.filename) 
+                return ( file.stats.isDirectory() &&
+                    !isDisabledTestFolderName(file.filename) &&
+                    isSelectedTest(file.filename) 
                 );
             });
 
