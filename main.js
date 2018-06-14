@@ -169,6 +169,12 @@
                 filename.length - DISABLED_TEST_FOLDER_SUFFIX.length);
         }
 
+        function isSelectedTest(filename) {
+            // Tests are considered selected by default unless the "selected-tests" key is present in config.
+            // If present, then check the list.
+            return ( !_config["selected-tests"] || _config["selected-tests"].indexOf(filename) > -1 );
+        }
+
         return (Q.nfcall(fse.readdir, path.resolve(__dirname, TEST_PATH_ROOT))
         .then(function (files) {
             var statPromises = files.map(function (f) {
@@ -182,7 +188,10 @@
         })
         .then(function (files) {
             var testDirs = files.filter(function (file) {
-                return file.stats.isDirectory() && !isDisabledTestFolderName(file.filename);
+                return ( file.stats.isDirectory() &&
+                    !isDisabledTestFolderName(file.filename) &&
+                    isSelectedTest(file.filename) 
+                );
             });
 
             var testPromises = testDirs.map(function (file) {
