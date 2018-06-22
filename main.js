@@ -55,6 +55,7 @@
         _assetsPluginPromise = _assetsPluginDeferred.promise.timeout(10000),
         _cremaTesterDeferred = Q.defer(),
         _cremaTesterPromise = _cremaTesterDeferred.promise.timeout(10000),
+        _isCremaPluginLoaded = false,
         _psExecutablePathPromise = null,
         _idleDeferred = null,
         _activeDeferred = Q.defer();
@@ -502,11 +503,16 @@
             actualFiles : null,
             errors : [],
             comparisons : []
-        };
+        },
+        outputDirList = [test.output];
+
+        if (_isCremaPluginLoaded) {
+            outputDirList.push( CREMA_ASSSET_DIR );
+        }
 
         return (Q.all([
-            getAllFiles(test.baseDir, [test.output, CREMA_ASSSET_DIR]),
-            getAllFiles(test.workingDir, [test.output, CREMA_ASSSET_DIR])
+            getAllFiles(test.baseDir, outputDirList),
+            getAllFiles(test.workingDir, outputDirList)
         ]).spread(function (_base, _working) {
             var toCompare = [],
                 compareFunctions,
@@ -724,7 +730,10 @@
             _logger.info("Crema Times:", results.map((r) => r.name + "~" + r.cremaTestDuration));
             _logger.info("Total time spent on crema", results.reduce((v, r) => {return v + r.cremaTestDuration;}, 0));
             if (!_config.autorun) {
-                _generator.alert("Generator automated test summary:\n\n" + summary);
+                var alertText = "Generator automated test summary:\n\n";
+                alertText += _isCremaPluginLoaded ? "" : "CREMA PLUGIN NOT LOADED.\nCrema tests were skipped.\n\n";
+                alertText += summary;
+                _generator.alert(alertText);
             }
         }));
     }
@@ -763,6 +772,7 @@
                 try {
                     var cremaTester = new CremaTester(plugin);
                     _cremaTesterDeferred.resolve(cremaTester);
+                    _isCremaPluginLoaded = true;
                 } catch (e) {
                     _cremaTesterDeferred.reject(e);
                 }
