@@ -309,7 +309,13 @@
         .then(function (config) {
             test.maxCompareMetric = config["max-compare-metric"] || DEFAULT_MAX_COMPARE_METRIC;
 
-            plugin._setConfig(config);
+            // The default behavior is to ignore any user-defined generator-assets configurations.
+            // That is, unless this parameter is set explicitly to true, we purge any generator-assets config
+            // before setting the test-specfic configs.
+            // But If `honor-generator-assets-config` is true, test-specific configs will overlay user-defined configs
+            var keepExistingConfig = _config["honor-generator-assets-config"] === true;
+
+            plugin._setConfig(config, keepExistingConfig);
 
             return openPhotoshopDocument(path.resolve(test.workingDir, test.input));
         })
