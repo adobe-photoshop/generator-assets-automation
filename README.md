@@ -18,6 +18,7 @@ The plug-in can be configured in your user-level `generator.json` file with the 
 4. `results-xml-path` - Desingates the file path for a Jenkins ingestable JUnit XML summary.  If not set, no xml summary will be written.
 5. `autorun` - default value: `false` - Indicates that the automation tests should run automatically on startup. 
 6. `selected-tests` - default value: `[]` - Run only tests listed in the value array.  If empty, run all.
+7. `honor-generator-assets-config` - default value: `false` - If true then any user-defined generator-assets configurations which are not *explicitly set* by a test-defined config will be honored.
 
 ### License
 
