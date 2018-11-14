@@ -12,11 +12,6 @@
         "mark": "\"",
         "escape": true
     },
-    "validateJSDoc": {
-        "checkParamNames": true,
-        "requireParamTypes": true,
-        "checkRedundantParams": true
-    },
     "requireCamelCaseOrUpperCaseIdentifiers": true,
     "disallowKeywords": ["with", "eval"],
     "disallowImplicitTypeConversion": ["numeric", "binary", "string"],

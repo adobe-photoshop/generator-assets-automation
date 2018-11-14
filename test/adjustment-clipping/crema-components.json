@@ -1,0 +1,22 @@
+[
+  {
+    "file": "ExportAs_bug_canvasOverflow.png",
+    "extension": "png",
+    "interpolationType": "bicubicAutomatic",
+    "metadataType": "none",
+    "scale": 1,
+    "useICCProfile": "sRGB IEC61966-2.1",
+    "embedICCProfile": false,
+    "layerId": 0,
+    "basename": "ExportAs_bug_canvasOverflow"
+  },
+  {
+    "file": "ExportAs_bug_canvasOverflow-200.png",
+    "extension": "png",
+    "interpolationType": "bicubicAutomatic",
+    "metadataType": "none",
+    "scale": 2,
+    "layerId": 0,
+    "basename": "ExportAs_bug_canvasOverflow-200"
+  }
+]
